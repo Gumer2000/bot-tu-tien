@@ -1,7 +1,5 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
-const express = require('express');
-const app = express();
 const keepAlive = require('./server.js');
 
 // Create Discord client
@@ -529,16 +527,6 @@ Sử dụng lệnh sau để xem hướng dẫn chi tiết:
       `);
   }
 }
-
-// Keep bot alive on Replit
-app.get('/', (req, res) => {
-  res.send('Bot is running!');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Web server running on port ${PORT}`);
-});
 
 // Start server and login bot
 keepAlive();
