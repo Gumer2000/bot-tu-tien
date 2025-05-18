@@ -1,0 +1,25 @@
+{
+  "name": "bot-tu-tien",
+  "version": "1.0.0",
+  "description": "Discord bot for Tu Tien cultivation game",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mongoose": "^7.1.0"
+  },
+  "engines": {
+    "node": ">=16.9.0"
+  }
+}

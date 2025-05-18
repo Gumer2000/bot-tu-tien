@@ -1,0 +1,28 @@
+language = "nodejs"
+run = "npm start"
+entrypoint = "index.js"
+hidden = [".config", "package-lock.json"]
+
+[packager]
+language = "nodejs"
+  [packager.features]
+  packageSearch = true
+  guessImports = true
+  enabledForHosting = false
+
+[nix]
+channel = "stable-22_11"
+
+[env]
+XDG_CONFIG_HOME = "/home/runner/.config"
+
+[gitHook]
+preCommit = "npm run lint"
+
+[languages]
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio" 
