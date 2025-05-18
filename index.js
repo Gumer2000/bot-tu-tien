@@ -100,7 +100,7 @@ function getUserData(userId) {
       coins: 100,
       items: [],
       canhGioi: CANH_GIOI[0],
-      linhThu: null  // Thêm trường linhThu
+      linhThu: null
     });
   }
   return client.userData.get(userId);
@@ -116,7 +116,7 @@ function spawnBoss() {
         ch.name.includes('boss') || ch.name.includes('general') || ch.name.includes('chung')
       );
       if (channel) {
-        channel.send(`🔥 BOSS ${bosses.current} đã xuất hiện! Hãy sử dụng tu!attack để tấn công!`);
+        channel.send(`🔥 BOSS ${bosses.current} đã xuất hiện! Hãy sử dụng !attack để tấn công!`);
       }
     });
   }
@@ -187,7 +187,7 @@ client.on('messageCreate', async message => {
 function handleStartCommand(message) {
   const userId = message.author.id;
   if (client.userData.has(userId)) {
-    message.reply('❌ Ngươi đã đăng ký tu tiên rồi! Hãy dùng tu!status để xem thông tin.');
+    message.reply('❌ Ngươi đã đăng ký tu tiên rồi! Hãy dùng !trangthai để xem thông tin.');
     return;
   }
 
@@ -196,7 +196,8 @@ function handleStartCommand(message) {
     exp: 0,
     coins: 100,
     items: [],
-    canhGioi: CANH_GIOI[0]
+    canhGioi: CANH_GIOI[0],
+    linhThu: null
   });
 
   message.reply(`
@@ -207,7 +208,7 @@ function handleStartCommand(message) {
 💰 Tiền: 100
 📊 EXP: 0/100
 
-❓ Dùng tu!help để xem hướng dẫn chi tiết
+❓ Dùng !trogiup để xem hướng dẫn chi tiết
   `);
 }
 
