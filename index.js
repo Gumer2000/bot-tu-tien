@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
 const express = require('express');
 const app = express();
+const keepAlive = require('./server.js');
 
 // Create Discord client
 const client = new Client({
@@ -539,5 +540,6 @@ app.listen(PORT, () => {
   console.log(`Web server running on port ${PORT}`);
 });
 
-// Login bot
+// Start server and login bot
+keepAlive();
 client.login(process.env.TOKEN);
