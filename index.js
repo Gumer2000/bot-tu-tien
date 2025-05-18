@@ -15,7 +15,7 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
-const PREFIX = 'tu!'; // Thay đổi prefix thành tu!
+const PREFIX = '!'; // Thay đổi prefix thành !
 
 // Collections for cooldowns and user data
 client.cooldowns = {
@@ -131,9 +131,9 @@ client.on('ready', () => {
 
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
-  if (!message.content.startsWith('!')) return;
+  if (!message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.slice(1).trim().split(/ +/);
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   try {
@@ -159,6 +159,12 @@ client.on('messageCreate', async message => {
       case 'linhthu':
         handleLinhThuCommand(message);
         break;
+      case 'thonphe':
+        handleThonPheCommand(message);
+        break;
+      case 'thongthu':
+        handleLinhThuInfoCommand(message);
+        break;
       case 'bicanh':
         handleBiCanhCommand(message);
         break;
@@ -171,15 +177,6 @@ client.on('messageCreate', async message => {
       case 'trogiup':
         handleHelpCommand(message);
         break;
-      case 'thonphe':
-        handleThonPheCommand(message);
-        break;
-      case 'thongthu':
-        handleLinhThuInfoCommand(message);
-        break;
-      default:
-        // Không gửi thông báo lỗi nếu lệnh không tồn tại
-        return;
     }
   } catch (error) {
     console.error(error);
