@@ -15,6 +15,8 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
+const PREFIX = 'tu!'; // Thay đổi prefix thành tu!
+
 // Collections for cooldowns and user data
 client.cooldowns = {
   pvp: new Collection(),
@@ -31,13 +33,27 @@ client.userData = new Collection();
 // Cooldown times in milliseconds
 const COOLDOWNS = {
   pvp: 5 * 60 * 1000,        // 5 minutes
-  bikip: 30 * 60 * 1000,     // 30 minutes
+  bikip: 2 * 60 * 60 * 1000, // 2 hours
   tuluyen: 60 * 60 * 1000,   // 1 hour
   duocvien: 30 * 60 * 1000,  // 30 minutes
   linhthu: 24 * 60 * 60 * 1000,  // 24 hours
-  bicanh: 24 * 60 * 60 * 1000,   // 24 hours
+  bicanh: 6 * 60 * 60 * 1000,    // 6 hours
   boss: 0  // No cooldown for viewing boss
 };
+
+// Cảnh giới tu tiên
+const CANH_GIOI = [
+  'Phàm Nhân',
+  'Luyện Khí',
+  'Trúc Cơ',
+  'Kim Đan',
+  'Nguyên Anh',
+  'Hóa Thần',
+  'Luyện Hư',
+  'Hợp Thể',
+  'Đại Thừa',
+  'Độ Kiếp'
+];
 
 // Boss system
 const bosses = {
@@ -49,6 +65,15 @@ const bosses = {
     'Thiên Ngoại Tà Tiên',
     'Cổ Tiên Thánh Thú'
   ]
+};
+
+// Thêm hệ thống linh thú
+const LINH_THU_TYPES = {
+  'Hỏa Kỳ Lân': { power: 100, element: 'hỏa' },
+  'Băng Phượng Hoàng': { power: 100, element: 'băng' },
+  'Lôi Long': { power: 100, element: 'lôi' },
+  'Mộc Quy': { power: 100, element: 'mộc' },
+  'Thổ Nham Thú': { power: 100, element: 'thổ' }
 };
 
 // Check cooldown function
@@ -72,8 +97,10 @@ function getUserData(userId) {
     client.userData.set(userId, {
       level: 1,
       exp: 0,
-      coins: 0,
-      items: []
+      coins: 100,
+      items: [],
+      canhGioi: CANH_GIOI[0],
+      linhThu: null  // Thêm trường linhThu
     });
   }
   return client.userData.get(userId);
@@ -89,14 +116,14 @@ function spawnBoss() {
         ch.name.includes('boss') || ch.name.includes('general') || ch.name.includes('chung')
       );
       if (channel) {
-        channel.send(`🔥 BOSS ${bosses.current} đã xuất hiện! Hãy sử dụng !danhboss để tấn công!`);
+        channel.send(`🔥 BOSS ${bosses.current} đã xuất hiện! Hãy sử dụng tu!attack để tấn công!`);
       }
     });
   }
 }
 
 client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+  console.log(`Đăng nhập thành công: ${client.user.tag}!`);
   // Start boss spawn timer
   setInterval(spawnBoss, 30 * 60 * 1000); // Every 30 minutes
   spawnBoss(); // Spawn first boss immediately
@@ -109,17 +136,13 @@ client.on('messageCreate', async message => {
   const args = message.content.slice(1).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // Command handler
   try {
     switch(command) {
-      case 'help':
-        handleHelpCommand(message);
+      case 'batdau':
+        handleStartCommand(message);
         break;
-      case 'boss':
-        handleBossCommand(message);
-        break;
-      case 'danhboss':
-        handleAttackBossCommand(message);
+      case 'trangthai':
+        handleStatusCommand(message);
         break;
       case 'tu':
         handleTuLuyenCommand(message);
@@ -130,7 +153,7 @@ client.on('messageCreate', async message => {
       case 'bikip':
         handleBiKipCommand(message);
         break;
-      case 'duocvien':
+      case 'haithuoc':
         handleDuocVienCommand(message);
         break;
       case 'linhthu':
@@ -139,20 +162,119 @@ client.on('messageCreate', async message => {
       case 'bicanh':
         handleBiCanhCommand(message);
         break;
-      case 'info':
-        handleInfoCommand(message);
+      case 'boss':
+        handleBossCommand(message);
         break;
-      case 'huongdantuluyen':
-        handleTutorialCommand(message, args);
+      case 'danhboss':
+        handleAttackBossCommand(message);
+        break;
+      case 'trogiup':
+        handleHelpCommand(message);
+        break;
+      case 'thonphe':
+        handleThonPheCommand(message);
+        break;
+      case 'thongthu':
+        handleLinhThuInfoCommand(message);
         break;
       default:
-        message.reply('Lệnh không hợp lệ. Sử dụng !help để xem danh sách lệnh.');
+        // Không gửi thông báo lỗi nếu lệnh không tồn tại
+        return;
     }
   } catch (error) {
     console.error(error);
-    message.reply('Có lỗi xảy ra khi thực hiện lệnh.');
+    message.reply('❌ Có lỗi xảy ra khi thực hiện lệnh.');
   }
 });
+
+function handleStartCommand(message) {
+  const userId = message.author.id;
+  if (client.userData.has(userId)) {
+    message.reply('❌ Ngươi đã đăng ký tu tiên rồi! Hãy dùng tu!status để xem thông tin.');
+    return;
+  }
+
+  client.userData.set(userId, {
+    level: 1,
+    exp: 0,
+    coins: 100,
+    items: [],
+    canhGioi: CANH_GIOI[0]
+  });
+
+  message.reply(`
+🎊 Chào mừng ${message.author.username} bước vào con đường tu tiên!
+
+📝 **Thông tin cơ bản:**
+🔰 Cảnh giới: ${CANH_GIOI[0]}
+💰 Tiền: 100
+📊 EXP: 0/100
+
+❓ Dùng tu!help để xem hướng dẫn chi tiết
+  `);
+}
+
+function handleStatusCommand(message) {
+  const userId = message.author.id;
+  const userData = getUserData(userId);
+  
+  if (!userData) {
+    message.reply('❌ Ngươi chưa bắt đầu tu tiên! Hãy dùng !batdau để đăng ký.');
+    return;
+  }
+
+  const nextLevel = userData.level * 100;
+  
+  const statusEmbed = `
+**🔮 Bảng Thông Tin Tu Tiên**
+👤 Đạo hữu: ${message.author.username}
+⭐ Cảnh giới: ${CANH_GIOI[userData.level - 1]}
+📊 Tu vi: ${userData.exp}/${nextLevel}
+💰 Linh thạch: ${userData.coins}
+
+**⏳ Thời gian chờ:**
+⚔️ PvP: ${formatCooldown(checkCooldown(userId, 'pvp'))}
+📚 Học bí kíp: ${formatCooldown(checkCooldown(userId, 'bikip'))}
+🧘 Tu luyện: ${formatCooldown(checkCooldown(userId, 'tuluyen'))}
+🌿 Hái thuốc: ${formatCooldown(checkCooldown(userId, 'duocvien'))}
+🐉 Thu phục: ${formatCooldown(checkCooldown(userId, 'linhthu'))}
+🏯 Khám phá: ${formatCooldown(checkCooldown(userId, 'bicanh'))}
+`;
+
+  message.reply(statusEmbed);
+}
+
+function handleHelpCommand(message) {
+  const helpText = `
+**📜 Hướng Dẫn Tu Tiên**
+
+🎮 **Lệnh cơ bản:**
+!batdau - Bắt đầu con đường tu tiên
+!trangthai - Xem thông tin tu vi
+!trogiup - Xem hướng dẫn
+
+🧘 **Tu luyện & Phát triển:**
+!tu - Tu luyện tăng exp (1h/lần)
+!bikip - Học bí kíp (30p/lần)
+!haithuoc - Hái thuốc (30p/lần)
+
+🌍 **Thám hiểm:**
+!linhthu - Thu phục linh thú (24h/lần)
+!bicanh - Khám phá bí cảnh (24h/lần)
+
+⚔️ **Chiến đấu:**
+!pvp @người_chơi - Luận bàn với đạo hữu (5p/lần)
+!boss - Xem thông tin boss
+!danhboss - Tấn công boss (3 lần/boss)
+
+💡 **Lưu ý:**
+- Boss xuất hiện mỗi 30 phút
+- Mỗi người được đánh boss 3 lần
+- Boss cần 10 lần tấn công để hạ gục
+- Người kết liễu boss nhận phần thưởng đặc biệt
+`;
+  message.reply(helpText);
+}
 
 // Boss command handlers
 function handleBossCommand(message) {
@@ -243,15 +365,39 @@ function handlePvPCommand(message, args) {
   const userData = getUserData(userId);
   const targetData = getUserData(target.id);
 
-  const userPower = userData.level * (Math.random() + 0.5);
-  const targetPower = targetData.level * (Math.random() + 0.5);
+  // Tính sức mạnh cơ bản của người chơi
+  const baseUserPower = userData.level * (Math.random() + 0.5);
+  const baseTargetPower = targetData.level * (Math.random() + 0.5);
+
+  // Tính thêm sức mạnh từ linh thú
+  let userBeastPower = 0;
+  let targetBeastPower = 0;
+
+  if (userData.linhThu) {
+    userBeastPower = userData.linhThu.power * 0.3; // Linh thú đóng góp 30% sức mạnh
+  }
+  if (targetData.linhThu) {
+    targetBeastPower = targetData.linhThu.power * 0.3;
+  }
+
+  // Tổng sức mạnh
+  const totalUserPower = baseUserPower + userBeastPower;
+  const totalTargetPower = baseTargetPower + targetBeastPower;
 
   let result;
-  if (userPower > targetPower) {
-    result = `🏆 ${message.author} đã chiến thắng ${target}!\n💪 Sức mạnh: ${userPower.toFixed(1)} > ${targetPower.toFixed(1)}`;
+  if (totalUserPower > totalTargetPower) {
+    result = `🏆 ${message.author} đã chiến thắng ${target}!\n` +
+             `💪 Sức mạnh: ${totalUserPower.toFixed(1)} > ${totalTargetPower.toFixed(1)}\n` +
+             `📊 Chi tiết:\n` +
+             `👤 ${message.author.username}: ${baseUserPower.toFixed(1)} + ${userBeastPower.toFixed(1)} (Linh thú)\n` +
+             `👤 ${target.username}: ${baseTargetPower.toFixed(1)} + ${targetBeastPower.toFixed(1)} (Linh thú)`;
     userData.coins += 100;
   } else {
-    result = `💀 ${message.author} đã thua ${target}!\n💪 Sức mạnh: ${userPower.toFixed(1)} < ${targetPower.toFixed(1)}`;
+    result = `💀 ${message.author} đã thua ${target}!\n` +
+             `💪 Sức mạnh: ${totalUserPower.toFixed(1)} < ${totalTargetPower.toFixed(1)}\n` +
+             `📊 Chi tiết:\n` +
+             `👤 ${message.author.username}: ${baseUserPower.toFixed(1)} + ${userBeastPower.toFixed(1)} (Linh thú)\n` +
+             `👤 ${target.username}: ${baseTargetPower.toFixed(1)} + ${targetBeastPower.toFixed(1)} (Linh thú)`;
   }
 
   message.reply(result);
@@ -298,8 +444,15 @@ function handleDuocVienCommand(message) {
 
 function handleLinhThuCommand(message) {
   const userId = message.author.id;
-  const cooldownTime = checkCooldown(userId, 'linhthu');
+  const userData = getUserData(userId);
   
+  // Kiểm tra nếu đã có linh thú
+  if (userData.linhThu) {
+    message.reply(`🐾 Bạn đã có ${userData.linhThu.name} (Cấp ${userData.linhThu.level}) rồi!\nDùng !thonphe để tìm linh thú khác thôn phệ.`);
+    return;
+  }
+
+  const cooldownTime = checkCooldown(userId, 'linhthu');
   if (cooldownTime > 0) {
     const hours = Math.floor(cooldownTime / 3600);
     const minutes = Math.floor((cooldownTime % 3600) / 60);
@@ -307,18 +460,93 @@ function handleLinhThuCommand(message) {
     return;
   }
 
-  const userData = getUserData(userId);
   const success = Math.random() < 0.5;
-  
   if (success) {
+    // Chọn ngẫu nhiên một loại linh thú
+    const linhThuTypes = Object.keys(LINH_THU_TYPES);
+    const randomType = linhThuTypes[Math.floor(Math.random() * linhThuTypes.length)];
+    const linhThuInfo = LINH_THU_TYPES[randomType];
+    
+    // Tạo linh thú mới
+    userData.linhThu = {
+      name: randomType,
+      level: 1,
+      exp: 0,
+      element: linhThuInfo.element,
+      power: linhThuInfo.power
+    };
+
     const expGain = Math.floor(Math.random() * 100) + 100;
     userData.exp += expGain;
-    message.reply(`🐉 Thu phục linh thú thành công!\n📊 EXP +${expGain}\n🔋 EXP hiện tại: ${userData.exp}/${userData.level * 100}`);
+    message.reply(`🐉 Thu phục linh thú thành công!\n🎊 Bạn đã thu phục được ${randomType} (${linhThuInfo.element})!\n📊 EXP +${expGain}\n🔋 EXP hiện tại: ${userData.exp}/${userData.level * 100}`);
   } else {
     message.reply('❌ Thu phục linh thú thất bại! Hãy thử lại sau 24 giờ.');
   }
   
   client.cooldowns.linhthu.set(userId, Date.now());
+}
+
+function handleThonPheCommand(message) {
+  const userId = message.author.id;
+  const userData = getUserData(userId);
+
+  if (!userData.linhThu) {
+    message.reply('❌ Bạn chưa có linh thú nào để thôn phệ!');
+    return;
+  }
+
+  const cooldownTime = checkCooldown(userId, 'linhthu');
+  if (cooldownTime > 0) {
+    const hours = Math.floor(cooldownTime / 3600);
+    const minutes = Math.floor((cooldownTime % 3600) / 60);
+    message.reply(`Bạn cần đợi ${hours}h${minutes}m nữa để thôn phệ tiếp.`);
+    return;
+  }
+
+  // Tìm linh thú để thôn phệ
+  const success = Math.random() < 0.4; // 40% cơ hội thành công
+  if (success) {
+    const expGain = Math.floor(Math.random() * 50) + 50;
+    userData.linhThu.exp += expGain;
+    
+    // Kiểm tra level up cho linh thú
+    if (userData.linhThu.exp >= userData.linhThu.level * 150) {
+      userData.linhThu.level += 1;
+      userData.linhThu.exp = 0;
+      userData.linhThu.power += 20;
+      
+      message.reply(`🎊 Chúc mừng! ${userData.linhThu.name} đã đột phá lên cấp ${userData.linhThu.level}!\n💪 Sức mạnh tăng lên ${userData.linhThu.power}!`);
+    } else {
+      message.reply(`✨ Thôn phệ thành công!\n📊 Linh thú EXP +${expGain}\n🔋 Linh thú EXP: ${userData.linhThu.exp}/${userData.linhThu.level * 150}`);
+    }
+  } else {
+    message.reply('❌ Thôn phệ thất bại! Hãy thử lại sau 24 giờ.');
+  }
+
+  client.cooldowns.linhthu.set(userId, Date.now());
+}
+
+function handleLinhThuInfoCommand(message) {
+  const userId = message.author.id;
+  const userData = getUserData(userId);
+
+  if (!userData.linhThu) {
+    message.reply('❌ Bạn chưa có linh thú nào!');
+    return;
+  }
+
+  const linhThu = userData.linhThu;
+  const powerContribution = (linhThu.power * 0.3).toFixed(1);
+  
+  message.reply(`
+🐾 **Thông Tin Linh Thú**
+Tên: ${linhThu.name}
+Cấp độ: ${linhThu.level}
+Nguyên tố: ${linhThu.element}
+Sức mạnh: ${linhThu.power}
+Đóng góp sức mạnh: +${powerContribution} (30% sức mạnh linh thú)
+EXP: ${linhThu.exp}/${linhThu.level * 150}
+  `);
 }
 
 function handleBiCanhCommand(message) {
@@ -345,28 +573,6 @@ function handleBiCanhCommand(message) {
   client.cooldowns.bicanh.set(userId, Date.now());
 }
 
-function handleInfoCommand(message) {
-  const userId = message.author.id;
-  const userData = getUserData(userId);
-  
-  const infoEmbed = `
-**Thông tin tu luyện của ${message.author.username}**
-🏆 Cảnh giới: ${userData.level}
-📊 EXP: ${userData.exp}/${userData.level * 100}
-💰 Coins: ${userData.coins}
-
-**Cooldown còn lại:**
-⚔️ PvP: ${formatCooldown(checkCooldown(userId, 'pvp'))}
-📚 Bí kíp: ${formatCooldown(checkCooldown(userId, 'bikip'))}
-🧘 Tu luyện: ${formatCooldown(checkCooldown(userId, 'tuluyen'))}
-🌿 Dược viên: ${formatCooldown(checkCooldown(userId, 'duocvien'))}
-🐉 Linh thú: ${formatCooldown(checkCooldown(userId, 'linhthu'))}
-🏯 Bí cảnh: ${formatCooldown(checkCooldown(userId, 'bicanh'))}
-`;
-  
-  message.reply(infoEmbed);
-}
-
 function formatCooldown(seconds) {
   if (seconds <= 0) return '✅ Sẵn sàng';
   
@@ -377,155 +583,6 @@ function formatCooldown(seconds) {
   if (hours > 0) return `⏳ ${hours}h${minutes}m`;
   if (minutes > 0) return `⏳ ${minutes}m${remainingSeconds}s`;
   return `⏳ ${remainingSeconds}s`;
-}
-
-function handleHelpCommand(message) {
-  const helpText = `
-**Danh sách lệnh Tu Tiên:**
-
-🎮 **Lệnh cơ bản:**
-!info - Xem thông tin tu luyện
-!help - Hiển thị danh sách lệnh
-
-🧘 **Tu luyện (1 giờ/lần):**
-!tu - Tu luyện tăng exp
-
-⚔️ **PvP (5 phút/lần):**
-!pvp @người_chơi - Thách đấu người chơi khác
-
-📚 **Hoạt động (30 phút/lần):**
-!bikip - Học bí kíp
-!duocvien - Hái dược viên
-
-🐉 **Hoạt động (24 giờ/lần):**
-!linhthu - Thu phục linh thú
-!bicanh - Khám phá bí cảnh
-
-🔥 **Boss thế giới:**
-!boss - Xem thông tin boss
-!danhboss - Tấn công boss (3 lần/boss)
-
-💡 **Thông tin thêm:**
-- Boss xuất hiện mỗi 30 phút
-- Mỗi người được đánh boss 3 lần
-- Boss cần 10 lần tấn công để hạ gục
-- Người kết liễu boss nhận phần thưởng đặc biệt
-`;
-  message.reply(helpText);
-}
-
-function handleTutorialCommand(message, args) {
-  const topic = args[0]?.toLowerCase();
-  
-  switch(topic) {
-    case 'co_ban':
-      message.reply(`
-**Hướng dẫn cơ bản Tu Tiên:**
-
-1️⃣ **Bắt đầu tu luyện:**
-- Sử dụng !tu để tu luyện tăng exp
-- Mỗi lần tu luyện nhận 50-100 exp
-- Đủ exp sẽ tự động đột phá cảnh giới
-- Cooldown: 1 giờ/lần
-
-2️⃣ **Tăng cường sức mạnh:**
-- Học bí kíp (!bikip) - 30 phút/lần
-- Thu thập dược viên (!duocvien) - 30 phút/lần
-- Thu phục linh thú (!linhthu) - 24 giờ/lần
-- Khám phá bí cảnh (!bicanh) - 24 giờ/lần
-
-3️⃣ **Tương tác:**
-- PvP với người chơi khác (!pvp @người_chơi)
-- Đánh boss thế giới (!danhboss)
-- Xem thông tin cá nhân (!info)
-      `);
-      break;
-
-    case 'canh_gioi':
-      message.reply(`
-**Hệ thống cảnh giới Tu Tiên:**
-
-🔰 **Cấp độ và yêu cầu EXP:**
-- Mỗi cấp yêu cầu: Cấp × 100 EXP
-- Ví dụ: 
-  + Cấp 1 → 2: 100 EXP
-  + Cấp 2 → 3: 200 EXP
-  + Cấp 3 → 4: 300 EXP
-
-💪 **Sức mạnh theo cấp:**
-- Mỗi cấp tăng sức mạnh cơ bản
-- Ảnh hưởng đến kết quả PvP
-- Tăng tỷ lệ thành công các hoạt động
-      `);
-      break;
-
-    case 'linh_thao':
-      message.reply(`
-**Hệ thống Linh Thảo:**
-
-🌿 **Thu thập dược viên:**
-- Lệnh: !duocvien
-- Cooldown: 30 phút/lần
-- Phần thưởng: 50-100 Coins
-- Coins dùng để mua vật phẩm (sắp ra mắt)
-
-💊 **Sử dụng dược viên:**
-- Tăng tốc độ tu luyện
-- Tăng tỷ lệ thành công
-- Chức năng đang phát triển
-      `);
-      break;
-
-    case 'nhiem_vu':
-      message.reply(`
-**Hệ thống nhiệm vụ:**
-
-🎯 **Boss thế giới:**
-- Xuất hiện mỗi 30 phút
-- Mỗi người được đánh 3 lần
-- Cần 10 lần tấn công để hạ gục
-- Phần thưởng đặc biệt cho người kết liễu
-
-🎁 **Phần thưởng:**
-- EXP từ tu luyện và hoạt động
-- Coins từ dược viên và bí cảnh
-- Phần thưởng đặc biệt từ boss
-      `);
-      break;
-
-    case 'meo_choi':
-      message.reply(`
-**Mẹo chơi Tu Tiên:**
-
-💡 **Tối ưu thời gian:**
-- Tu luyện ngay khi hết cooldown
-- Kết hợp nhiều hoạt động khác nhau
-- Tham gia đánh boss khi có thể
-
-🔥 **Tăng tốc phát triển:**
-- Ưu tiên tu luyện và học bí kíp
-- Thu thập dược viên đều đặn
-- Tham gia PvP để kiếm thêm coins
-
-🤝 **Liên minh:**
-- Kết bạn với người chơi khác
-- Cùng nhau đánh boss
-- Chia sẻ tài nguyên và kinh nghiệm
-      `);
-      break;
-
-    default:
-      message.reply(`
-**Hướng dẫn Tu Tiên**
-
-Sử dụng lệnh sau để xem hướng dẫn chi tiết:
-!huongdantuluyen co_ban - Hướng dẫn cơ bản
-!huongdantuluyen canh_gioi - Thông tin cảnh giới
-!huongdantuluyen linh_thao - Hệ thống linh thảo
-!huongdantuluyen nhiem_vu - Nhiệm vụ & phần thưởng
-!huongdantuluyen meo_choi - Mẹo chơi & chiến thuật
-      `);
-  }
 }
 
 // Start server and login bot
