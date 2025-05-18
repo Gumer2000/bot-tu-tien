@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
 const express = require('express');
 const app = express();
 
@@ -9,8 +9,11 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMessageReactions
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
 // Collections for cooldowns
@@ -47,8 +50,27 @@ const bosses = {
   ]
 };
 
+// Spawn boss every 30 minutes
+function spawnBoss() {
+  if (!bosses.current) {
+    bosses.current = bosses.types[Math.floor(Math.random() * bosses.types.length)];
+    bosses.hits = 0;
+    client.guilds.cache.forEach(guild => {
+      const channel = guild.channels.cache.find(ch => 
+        ch.name.includes('boss') || ch.name.includes('general') || ch.name.includes('chung')
+      );
+      if (channel) {
+        channel.send(`🔥 BOSS ${bosses.current} đã xuất hiện! Hãy sử dụng !danhboss để tấn công!`);
+      }
+    });
+  }
+}
+
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
+  // Start boss spawn timer
+  setInterval(spawnBoss, 30 * 60 * 1000); // Every 30 minutes
+  spawnBoss(); // Spawn first boss immediately
 });
 
 client.on('messageCreate', async message => {
@@ -67,7 +89,11 @@ client.on('messageCreate', async message => {
       case 'danhboss':
         handleAttackBossCommand(message);
         break;
-      // Add other commands here
+      case 'help':
+        handleHelpCommand(message);
+        break;
+      default:
+        message.reply('Lệnh không hợp lệ. Sử dụng !help để xem danh sách lệnh.');
     }
   } catch (error) {
     console.error(error);
@@ -103,12 +129,30 @@ function handleAttackBossCommand(message) {
   client.cooldowns.boss.set(userId, userHits + 1);
 
   if (bosses.hits >= bosses.maxHits) {
-    message.reply(`Chúc mừng! Bạn đã kết liễu ${bosses.current}!\nPhần thưởng đặc biệt đã được trao tặng.`);
+    message.reply(`🎉 Chúc mừng! Bạn đã kết liễu ${bosses.current}!\n💎 Phần thưởng đặc biệt đã được trao tặng.`);
     bosses.current = null;
     bosses.hits = 0;
+    // Spawn new boss after 5 minutes
+    setTimeout(spawnBoss, 5 * 60 * 1000);
   } else {
-    message.reply(`Tấn công thành công! Boss còn ${bosses.maxHits - bosses.hits} đòn nữa sẽ gục.`);
+    message.reply(`⚔️ Tấn công thành công! Boss còn ${bosses.maxHits - bosses.hits} đòn nữa sẽ gục.`);
   }
+}
+
+function handleHelpCommand(message) {
+  const helpText = `
+**Danh sách lệnh:**
+!boss - Xem thông tin boss hiện tại
+!danhboss - Tấn công boss (mỗi người 3 lần/ngày)
+!help - Hiển thị danh sách lệnh
+
+**Thông tin boss:**
+- Boss xuất hiện mỗi 30 phút
+- Mỗi người được đánh 3 lần
+- Boss cần 10 lần tấn công để hạ gục
+- Người kết liễu boss nhận phần thưởng đặc biệt
+  `;
+  message.reply(helpText);
 }
 
 // Keep bot alive on Replit
